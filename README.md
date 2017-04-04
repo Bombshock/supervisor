@@ -6,6 +6,10 @@ Simple tool for hyperthreading in nodejs.
 * auto recovery when process gets killed
 * 0ms overhead
 
+# examples
+* perf.js
+* test.js
+
 # usage
 
 ```
