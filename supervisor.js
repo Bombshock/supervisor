@@ -76,8 +76,8 @@
         return deferred.promise;
     }
 
-    function send(name, msg) {
-        let child = PROVIDED[name][0];
+    function send(name, msg, childOverride) {
+        let child = childOverride || PROVIDED[name][0];
 
         if (!child) {
             QUEUE[name] = QUEUE[name] || [];
@@ -90,7 +90,7 @@
         child.send({
             id: msg.id,
             request: msg.request,
-            args: msg.args,
+            args: msg.args
         });
         PROVIDED[name].sort((a, b) => {
             let res = a.threads - b.threads;
@@ -121,8 +121,8 @@
         WORKER.push(child);
 
         console.error(`${child.title} spawned`);
-        child.on('exit', (worker, code, signal) => {
-            console.error(`${child.title} died - code: ${code} signal: ${signal}`);
+        child.on('exit', (worker, signal) => {
+            console.error(`${child.title} died - signal: ${signal}`);
             cleanup(child, path);
         });
 
@@ -141,10 +141,16 @@
                 });
             }
 
-            if (typeof msg.result !== "undefined" && MESSAGES[msg.id]) {
-                let deferred = MESSAGES[msg.id].deferred;
+            if (typeof msg.result !== "undefined") {
                 child.threads--;
                 child.threadsdone++;
+
+                //other worker finished this, might happen after relocate
+                if (!MESSAGES[msg.id]) {
+                    return;
+                }
+
+                let deferred = MESSAGES[msg.id].deferred;
 
                 if (msg.success) {
                     deferred.resolve(msg.result);
@@ -155,12 +161,14 @@
                 delete MESSAGES[msg.id];
             }
         });
+
+        return child;
     }
 
     function cleanup(child, path) {
         removeChild(child);
-        createWorker(path);
-        relocateMessages(child);
+        let next = createWorker(path);
+        relocateMessages(child, next);
     }
 
     function removeChild(child) {
@@ -185,17 +193,17 @@
         });
     }
 
-    function relocateMessages(child) {
+    function relocateMessages(prevChild, nextChild) {
         let c = 0;
         Object.getOwnPropertyNames(MESSAGES)
             .forEach((id) => {
                 let msg = MESSAGES[id];
-                if (msg.worker === child) {
-                    send(msg.request, msg);
+                if (msg.worker === prevChild) {
+                    send(msg.request, msg, nextChild);
                     c++;
                 }
             });
-        console.error(`${child.title} -> relocated ${c}/${child.threads} tasks`);
+        console.error(`${prevChild.title} -> relocated ${c}/${prevChild.threads} tasks`);
     }
 
     function pad(value, length) {
