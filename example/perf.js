@@ -1,11 +1,11 @@
 (function () {
     "strict mode";
 
-    const supervisor = require("./supervisor");
+    const supervisor = require("../supervisor");
     const Q = require("q");
     const start = Date.now();
 
-    let amount = 500;
+    let amount = 1000;
     let sum = 0;
 
     supervisor.cluster("./fibonacci.js");
@@ -40,6 +40,7 @@
                 let avg = Math.round(sum / amount);
                 console.log(`SYNC:    avarage time over ${amount} requests: ${avg}ms`);
                 supervisor.stats();
+                process.exit(0);
             });
 
         function consumeSync() {

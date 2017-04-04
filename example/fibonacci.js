@@ -1,7 +1,7 @@
 (function () {
     "strict mode";
 
-    const supervisor = require("./supervisor");
+    const supervisor = require("../supervisor");
     const Q = require("q");
 
     supervisor.provide("fibonacci", fibonacci);

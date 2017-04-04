@@ -78,6 +78,13 @@
 
     function send(name, msg) {
         let child = PROVIDED[name][0];
+
+        if (!child) {
+            QUEUE[name] = QUEUE[name] || [];
+            QUEUE[name].push(msg);
+            return;
+        }
+
         child.threads++;
         msg.worker = child;
         child.send({
@@ -116,9 +123,7 @@
         console.error(`${child.title} spawned`);
         child.on('exit', (worker, code, signal) => {
             console.error(`${child.title} died - code: ${code} signal: ${signal}`);
-            removeChild(child);
-            createWorker(path);
-            relocateMessages(child);
+            cleanup(child, path);
         });
 
         child.on("message", (msg) => {
@@ -136,7 +141,7 @@
                 });
             }
 
-            if (msg.result) {
+            if (typeof msg.result !== "undefined" && MESSAGES[msg.id]) {
                 let deferred = MESSAGES[msg.id].deferred;
                 child.threads--;
                 child.threadsdone++;
@@ -150,6 +155,12 @@
                 delete MESSAGES[msg.id];
             }
         });
+    }
+
+    function cleanup(child, path) {
+        removeChild(child);
+        createWorker(path);
+        relocateMessages(child);
     }
 
     function removeChild(child) {
