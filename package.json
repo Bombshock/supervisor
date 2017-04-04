@@ -1,13 +1,21 @@
 {
-  "name": "worker",
+  "name": "supervisor",
   "version": "1.0.0",
-  "description": "",
-  "main": "main.js",
+  "description": "Simple tool for hyperthreading in nodejs. ",
+  "main": "supervisor.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Bombshock/supervisor.git"
+  },
+  "author": "Bombshock",
   "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Bombshock/supervisor/issues"
+  },
+  "homepage": "https://github.com/Bombshock/supervisor#readme",
   "dependencies": {
     "q": "^1.5.0",
     "uuid-v4": "^0.1.0"
