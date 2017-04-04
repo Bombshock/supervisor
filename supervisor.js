@@ -116,7 +116,7 @@
         });
         child.threads = 0;
         child.threadsdone = 0;
-        child.title = `${path.replace("./", "").replace(".js", "")} #${pad(child.pid, 6)}`;
+        child.title = `Supervisor :: ${path.replace("./", "").replace(".js", "")} #${pad(child.pid, 6)}`;
 
         WORKER.push(child);
 
@@ -187,7 +187,7 @@
     }
 
     function stats() {
-        console.log(`supervisor threads (${WORKER.length})`);
+        console.log(`Supervisor :: threads (${WORKER.length})`);
         WORKER.forEach((child) => {
             console.log(`${child.title} - threads active: ${child.threads} done: ${child.threadsdone}`);
         });
