@@ -1,11 +1,10 @@
 (function () {
-    "strict mode";
+    "use strict";
 
     const supervisor = require("../supervisor");
     const Q = require("q");
-    const start = Date.now();
 
-    let amount = 1000;
+    let amount = 500;
     let sum = 0;
 
     supervisor.cluster("./fibonacci.js");
@@ -48,10 +47,10 @@
         }
     }
 
-    function consume(i) {
+    function consume() {
         let start = Date.now();
         return supervisor.request("ping")
-            .then((result) => {
+            .then(() => {
                 let end = Date.now() - start;
                 sum += end;
             })

@@ -1,5 +1,5 @@
 (function () {
-    "strict mode";
+    "use strict";
 
     const numCPUs = require('os').cpus().length;
     const child_process = require("child_process");
@@ -12,18 +12,29 @@
     let CONSUMEABLES = {};
     let QUEUE = {};
 
-    supervisor = module.exports = {
+    let supervisor = module.exports = {
         provide: provide,
         request: request,
         cluster: cluster,
         stats: stats,
         log: {
-            level: 'info',
             info: console.log.bind(console),
             error: console.error.bind(console),
-            debug: console.log.bind(console)
+            debug: console.log.bind(console),
+            verbose: console.log.bind(console),
+            silly: console.log.bind(console)
         }
     };
+
+    if (process.send) {
+        supervisor.log = {
+            info: logFactory("info"),
+            error: logFactory("error"),
+            debug: logFactory("debug"),
+            verbose: logFactory("verbose"),
+            silly: logFactory("silly")
+        };
+    }
 
     process.on('message', (m) => {
         if (m.request) {
@@ -38,6 +49,7 @@
                         });
                     })
                     .catch((err) => {
+                        supervisor.log.error(err);
                         process.send({
                             result: err,
                             success: false,
@@ -48,12 +60,26 @@
         }
     });
 
+    function logFactory(level) {
+        return function (...args) {
+            process.send({
+                log: true,
+                level: level,
+                args: args
+            });
+        };
+    }
+
     function provide(name, fn) {
-        process.send({ provide: name });
+        name = name.toLowerCase();
+        process.send({
+            provide: name
+        });
         CONSUMEABLES[name] = fn;
     }
 
     function request(name, ...args) {
+        name = name.toLowerCase();
         let deferred = Q.defer();
 
         let id = uuid();
@@ -112,26 +138,37 @@
 
     function createWorker(path) {
         let child = child_process.fork(path, [], {
-            env: process.env
+            env: process.env,
+            execArgv: []
         });
         child.threads = 0;
         child.threadsdone = 0;
-        child.title = `Supervisor :: ${path.replace("./", "").replace(".js", "")} #${pad(child.pid, 6)}`;
+        child.title = `Supervisor :: ${path} ${pad(child.pid, 6)}`;
+        child.titlemin = `[WORKER${pad(child.pid, 7)}]`;
 
         WORKER.push(child);
 
-        console.error(`${child.title} spawned`);
+        supervisor.log.info(`${child.title} spawned`);
+
         child.on('exit', (worker, signal) => {
-            console.error(`${child.title} died - signal: ${signal}`);
-            cleanup(child, path);
+            setTimeout(() => {
+                supervisor.log.error(`${child.title} died - signal: ${signal}`);
+                cleanup(child, path);
+            }, 500);
         });
 
         child.on("message", (msg) => {
+            if (msg.log) {
+                msg.args.unshift(child.titlemin);
+                supervisor.log[msg.level].apply(supervisor.log, msg.args);
+            }
+
             if (msg.provide) {
                 if (!Array.isArray(msg.provide)) {
                     msg.provide = [msg.provide];
                 }
                 msg.provide.forEach((name) => {
+                    name = name.toLowerCase();
                     PROVIDED[name] = PROVIDED[name] || [];
                     PROVIDED[name].push(child);
                     if (QUEUE[name]) {
@@ -187,9 +224,9 @@
     }
 
     function stats() {
-        console.log(`Supervisor :: threads (${WORKER.length})`);
+        supervisor.log.info(`Supervisor :: threads (${WORKER.length})`);
         WORKER.forEach((child) => {
-            console.log(`${child.title} - threads active: ${child.threads} done: ${child.threadsdone}`);
+            supervisor.log.info(`${child.title} - threads active: ${child.threads} done: ${child.threadsdone}`);
         });
     }
 
@@ -203,11 +240,11 @@
                     c++;
                 }
             });
-        console.error(`${prevChild.title} -> relocated ${c}/${prevChild.threads} tasks`);
+        supervisor.log.error(`${prevChild.title} -> relocated ${c}/${prevChild.threads} tasks`);
     }
 
     function pad(value, length) {
-        return (value.toString().length < length) ? pad(value + " ", length) : value;
+        return (value.toString().length < length) ? pad(" " + value, length) : value;
     }
 
 })();

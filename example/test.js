@@ -1,5 +1,5 @@
 (function () {
-    "strict mode";
+    "use strict";
 
     const supervisor = require("../supervisor");
     const start = Date.now();
@@ -9,7 +9,7 @@
     setTimeout(perf, 500);
 
     function perf() {
-        for (let i = 1; i <= 50; i++) {
+        for (let i = 1; i <= 60; i++) {
             consume(i);
         }
     }
