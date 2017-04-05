@@ -1,20 +1,20 @@
-//call "./node_modules/.bin/babel" supervisor.js -o supervisor.es5.js --presets=es2015
+"use strict";
 
 (function () {
     "use strict";
 
-    const numCPUs = require('os').cpus().length;
-    const child_process = require("child_process");
-    const uuid = require("uuid-v4");
-    const Q = require("q");
+    var numCPUs = require('os').cpus().length;
+    var child_process = require("child_process");
+    var uuid = require("uuid-v4");
+    var Q = require("q");
 
-    let WORKER = [];
-    let PROVIDED = {};
-    let MESSAGES = {};
-    let CONSUMEABLES = {};
-    let QUEUE = {};
+    var WORKER = [];
+    var PROVIDED = {};
+    var MESSAGES = {};
+    var CONSUMEABLES = {};
+    var QUEUE = {};
 
-    let supervisor = module.exports = {
+    var supervisor = module.exports = {
         provide: provide,
         request: request,
         cluster: cluster,
@@ -38,32 +38,34 @@
         };
     }
 
-    process.on('message', (m) => {
+    process.on('message', function (m) {
         if (m.request) {
             if (typeof CONSUMEABLES[m.request] === "function") {
-                let res = CONSUMEABLES[m.request].apply(null, m.args || []);
-                Q.when(res)
-                    .then((res) => {
-                        process.send({
-                            result: res,
-                            success: true,
-                            id: m.id
-                        });
-                    })
-                    .catch((err) => {
-                        supervisor.log.error(err);
-                        process.send({
-                            result: err,
-                            success: false,
-                            id: m.id
-                        });
+                var res = CONSUMEABLES[m.request].apply(null, m.args || []);
+                Q.when(res).then(function (res) {
+                    process.send({
+                        result: res,
+                        success: true,
+                        id: m.id
                     });
+                }).catch(function (err) {
+                    supervisor.log.error(err);
+                    process.send({
+                        result: err,
+                        success: false,
+                        id: m.id
+                    });
+                });
             }
         }
     });
 
     function logFactory(level) {
-        return function (...args) {
+        return function () {
+            for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+                args[_key] = arguments[_key];
+            }
+
             process.send({
                 log: true,
                 level: level,
@@ -80,12 +82,16 @@
         CONSUMEABLES[name] = fn;
     }
 
-    function request(name, ...args) {
-        name = name.toLowerCase();
-        let deferred = Q.defer();
+    function request(name) {
+        for (var _len2 = arguments.length, args = Array(_len2 > 1 ? _len2 - 1 : 0), _key2 = 1; _key2 < _len2; _key2++) {
+            args[_key2 - 1] = arguments[_key2];
+        }
 
-        let id = uuid();
-        let msg = {
+        name = name.toLowerCase();
+        var deferred = Q.defer();
+
+        var id = uuid();
+        var msg = {
             request: name,
             args: args,
             id: id,
@@ -105,7 +111,7 @@
     }
 
     function send(name, msg, childOverride) {
-        let child = childOverride || PROVIDED[name][0];
+        var child = childOverride || PROVIDED[name][0];
 
         if (!child) {
             QUEUE[name] = QUEUE[name] || [];
@@ -120,8 +126,8 @@
             request: msg.request,
             args: msg.args
         });
-        PROVIDED[name].sort((a, b) => {
-            let res = a.threads - b.threads;
+        PROVIDED[name].sort(function (a, b) {
+            var res = a.threads - b.threads;
 
             //roundrobin
             if (res === 0) {
@@ -133,33 +139,33 @@
     }
 
     function cluster(path) {
-        for (let i = 0; i < numCPUs; i++) {
+        for (var i = 0; i < numCPUs; i++) {
             createWorker(path);
         }
     }
 
     function createWorker(path) {
-        let child = child_process.fork(path, [], {
+        var child = child_process.fork(path, [], {
             env: process.env,
             execArgv: []
         });
         child.threads = 0;
         child.threadsdone = 0;
-        child.title = `Supervisor :: ${path} ${pad(child.pid, 6)}`;
-        child.titlemin = `[WORKER${pad(child.pid, 7)}]`;
+        child.title = "Supervisor :: " + path + " " + pad(child.pid, 6);
+        child.titlemin = "[WORKER" + pad(child.pid, 7) + "]";
 
         WORKER.push(child);
 
-        supervisor.log.info(`${child.title} spawned`);
+        supervisor.log.info(child.title + " spawned");
 
-        child.on('exit', (worker, signal) => {
-            setTimeout(() => {
-                supervisor.log.error(`${child.title} died - signal: ${signal}`);
+        child.on('exit', function (worker, signal) {
+            setTimeout(function () {
+                supervisor.log.error(child.title + " died - signal: " + signal);
                 cleanup(child, path);
             }, 500);
         });
 
-        child.on("message", (msg) => {
+        child.on("message", function (msg) {
             if (msg.log) {
                 msg.args.unshift(child.titlemin);
                 supervisor.log[msg.level].apply(supervisor.log, msg.args);
@@ -169,12 +175,14 @@
                 if (!Array.isArray(msg.provide)) {
                     msg.provide = [msg.provide];
                 }
-                msg.provide.forEach((name) => {
+                msg.provide.forEach(function (name) {
                     name = name.toLowerCase();
                     PROVIDED[name] = PROVIDED[name] || [];
                     PROVIDED[name].push(child);
                     if (QUEUE[name]) {
-                        QUEUE[name].forEach(msg => send(name, msg));
+                        QUEUE[name].forEach(function (msg) {
+                            return send(name, msg);
+                        });
                         delete QUEUE[name];
                     }
                 });
@@ -189,7 +197,7 @@
                     return;
                 }
 
-                let deferred = MESSAGES[msg.id].deferred;
+                var deferred = MESSAGES[msg.id].deferred;
 
                 if (msg.success) {
                     deferred.resolve(msg.result);
@@ -206,47 +214,44 @@
 
     function cleanup(child, path) {
         removeChild(child);
-        let next = createWorker(path);
+        var next = createWorker(path);
         relocateMessages(child, next);
     }
 
     function removeChild(child) {
-        let index = WORKER.indexOf(child);
+        var index = WORKER.indexOf(child);
         if (index !== -1) {
             WORKER.splice(index, 1);
         }
 
-        Object.getOwnPropertyNames(PROVIDED)
-            .forEach((name) => {
-                let index = PROVIDED[name].indexOf(child);
-                if (index !== -1) {
-                    PROVIDED[name].splice(index, 1);
-                }
-            });
+        Object.getOwnPropertyNames(PROVIDED).forEach(function (name) {
+            var index = PROVIDED[name].indexOf(child);
+            if (index !== -1) {
+                PROVIDED[name].splice(index, 1);
+            }
+        });
     }
 
     function stats() {
-        supervisor.log.info(`Supervisor :: threads (${WORKER.length})`);
-        WORKER.forEach((child) => {
-            supervisor.log.info(`${child.title} - threads active: ${child.threads} done: ${child.threadsdone}`);
+        supervisor.log.info("Supervisor :: threads (" + WORKER.length + ")");
+        WORKER.forEach(function (child) {
+            supervisor.log.info(child.title + " - threads active: " + child.threads + " done: " + child.threadsdone);
         });
     }
 
     function relocateMessages(prevChild, nextChild) {
-        let c = 0;
-        Object.getOwnPropertyNames(MESSAGES)
-            .forEach((id) => {
-                let msg = MESSAGES[id];
-                if (msg.worker === prevChild) {
-                    send(msg.request, msg, nextChild);
-                    c++;
-                }
-            });
-        supervisor.log.error(`${prevChild.title} -> relocated ${c}/${prevChild.threads} tasks`);
+        var c = 0;
+        Object.getOwnPropertyNames(MESSAGES).forEach(function (id) {
+            var msg = MESSAGES[id];
+            if (msg.worker === prevChild) {
+                send(msg.request, msg, nextChild);
+                c++;
+            }
+        });
+        supervisor.log.error(prevChild.title + " -> relocated " + c + "/" + prevChild.threads + " tasks");
     }
 
     function pad(value, length) {
-        return (value.toString().length < length) ? pad(" " + value, length) : value;
+        return value.toString().length < length ? pad(" " + value, length) : value;
     }
-
 })();
