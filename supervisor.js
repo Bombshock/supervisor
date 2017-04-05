@@ -63,7 +63,8 @@
     });
 
     function logFactory(level) {
-        return function (...args) {
+        return function () {
+            let args = Array.prototype.slice.call(arguments);
             process.send({
                 log: true,
                 level: level,
@@ -80,8 +81,9 @@
         CONSUMEABLES[name] = fn;
     }
 
-    function request(name, ...args) {
-        name = name.toLowerCase();
+    function request() {
+        let args = Array.prototype.slice.call(arguments);
+        let name = args.shift().toLowerCase();
         let deferred = Q.defer();
 
         let id = uuid();
