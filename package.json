@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/Bombshock/supervisor#readme",
   "dependencies": {
+    "lodash": "^4.17.4",
     "q": "^1.5.0",
     "uuid-v4": "^0.1.0"
   },

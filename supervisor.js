@@ -7,6 +7,7 @@
     const child_process = require("child_process");
     const uuid = require("uuid-v4");
     const Q = require("q");
+    const _ = require("lodash");
 
     let WORKER = [];
     let PROVIDED = {};
@@ -141,8 +142,11 @@
     }
 
     function createWorker(path) {
+        let env = _.clone(process.env);
+        env.SUPERVISOR_MODE = "child";
+
         let child = child_process.fork(path, [], {
-            env: process.env,
+            env: env,
             execArgv: []
         });
         child.threads = 0;
