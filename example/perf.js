@@ -4,7 +4,7 @@
     const supervisor = require("../supervisor");
     const Q = require("q");
 
-    let amount = 500;
+    let amount = 5000;
     let sum = 0;
 
     supervisor.cluster("./fibonacci.js");
@@ -19,8 +19,12 @@
         }
         Q.all(promises)
             .then(() => {
-                let avg = Math.round(sum / amount);
-                console.log(`PARALEL: avarage time over ${amount} requests: ${avg}ms`);
+                let avg = Math.round(sum / amount * 100) / 100;
+                console.log();
+                console.log("===========================");
+                console.log(`ASYNC:   avg: ${avg}ms`);
+                console.log(`         sum: ${sum}ms`);
+                console.log("===========================");
                 supervisor.stats();
             })
             .then(perfSyn);
@@ -36,8 +40,12 @@
 
         promiseSync
             .then(() => {
-                let avg = Math.round(sum / amount);
-                console.log(`SYNC:    avarage time over ${amount} requests: ${avg}ms`);
+                let avg = Math.round(sum / amount * 100) / 100;
+                console.log();
+                console.log("===========================");
+                console.log(`SYNC:    avg: ${avg}ms`);
+                console.log(`         sum: ${sum}ms`);
+                console.log("===========================");
                 supervisor.stats();
                 process.exit(0);
             });

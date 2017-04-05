@@ -5,7 +5,7 @@
 
     supervisor.provide("fibonacci", fibonacci);
     supervisor.provide("ping", ping);
-    supervisor.log.info("fibonacci " + process.pid + " ready");
+    supervisor.log.info("online");
 
     function fibonacci(n) {
         return n < 1 ? 0 :
