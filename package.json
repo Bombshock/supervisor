@@ -1,6 +1,6 @@
 {
   "name": "supervisor",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "Simple tool for hyperthreading in nodejs. ",
   "main": "supervisor.js",
   "scripts": {
