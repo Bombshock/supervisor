@@ -39,6 +39,12 @@
         };
     }
 
+    process.on('exit', () => {
+        WORKER.forEach((worker) => {
+            worker.kill();
+        });
+    });
+
     process.on('message', (m) => {
         if (m.request) {
             if (typeof CONSUMEABLES[m.request] === "function") {
