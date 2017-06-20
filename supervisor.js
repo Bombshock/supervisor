@@ -9,11 +9,15 @@
     const Q = require("q");
     const _ = require("lodash");
 
+    const HEARTBEAT_TICK = 1000 * 60; //60s
+    const HEARTBEAT_DELAY = 1000 * 1; //1s
+
     let WORKER = [];
     let PROVIDED = {};
     let MESSAGES = {};
     let CONSUMEABLES = {};
     let QUEUE = {};
+    let HEARTBEAT_TIMEOUT;
 
     let supervisor = module.exports = {
         provide: provide,
@@ -29,7 +33,9 @@
         }
     };
 
-    if (process.send) {
+    // Clustered Worker
+    if (process.env.WORKER === "true") {
+        recieveHeartbeat();
         supervisor.log = {
             info: logFactory("info"),
             error: logFactory("error"),
@@ -46,6 +52,7 @@
     });
 
     process.on('message', (m) => {
+        //request from master to worker for job
         if (m.request) {
             if (typeof CONSUMEABLES[m.request] === "function") {
                 let res = CONSUMEABLES[m.request].apply(null, m.args || []);
@@ -67,7 +74,20 @@
                     });
             }
         }
+
+        //master -> worker heartbeat
+        if (m.heartbeat) {
+            recieveHeartbeat();
+        }
     });
+
+    function recieveHeartbeat() {
+        clearTimeout(HEARTBEAT_TIMEOUT);
+        HEARTBEAT_TIMEOUT = setTimeout(() => {
+            supervisor.log.info(`recieved no heartbeat after ${HEARTBEAT_TICK}ms -> suicide`);
+            process.exit(0);
+        }, HEARTBEAT_TICK);
+    }
 
     function logFactory(level) {
         return function () {
@@ -152,21 +172,31 @@
         env.SUPERVISOR_MODE = "child";
 
         let child = child_process.fork(path, [], {
-            env: env,
+            env: _.extend(env, {
+                "WORKER": true
+            }),
             execArgv: []
         });
+
         child.threads = 0;
         child.threadsdone = 0;
-        child.title = `Supervisor :: ${path} ${pad(child.pid, 6)}`;
+        child.title = `${path} ${pad(child.pid, 6)}`;
         child.titlemin = `[WORKER${pad(child.pid, 7)}]`;
 
         WORKER.push(child);
 
-        supervisor.log.info(`${child.title} spawned`);
+        supervisor.log.info(`${child.titlemin} spawned`);
+
+        let interval = setInterval(() => {
+            child.send({
+                heartbeat: true
+            });
+        }, HEARTBEAT_DELAY);
 
         child.on('exit', (worker, signal) => {
+            clearInterval(interval);
             setTimeout(() => {
-                supervisor.log.error(`${child.title} died - signal: ${signal}`);
+                supervisor.log.error(`${child.titlemin} died - signal: ${signal}`);
                 cleanup(child, path);
             }, 500);
         });
@@ -238,10 +268,15 @@
     }
 
     function stats() {
-        supervisor.log.info(`Supervisor :: threads (${WORKER.length})`);
-        WORKER.forEach((child) => {
-            supervisor.log.info(`${child.title} - threads active: ${child.threads} done: ${child.threadsdone}`);
-        });
+        return {
+            workers: WORKER.map(child => {
+                return {
+                    id: child.pid,
+                    threads: child.threads,
+                    done: child.threadsdone
+                };
+            })
+        };
     }
 
     function relocateMessages(prevChild, nextChild) {
@@ -254,7 +289,7 @@
                     c++;
                 }
             });
-        supervisor.log.error(`${prevChild.title} -> relocated ${c}/${prevChild.threads} tasks`);
+        supervisor.log.error(`${prevChild.titlemin} -> relocated ${c}/${prevChild.threads} tasks`);
     }
 
     function pad(value, length) {

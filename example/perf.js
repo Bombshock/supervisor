@@ -17,7 +17,8 @@
         for (let i = 0; i < amount; i++) {
             promises.push(consume(i));
         }
-        Q.all(promises)
+
+        return Q.all(promises)
             .then(() => {
                 let avg = Math.round(sum / amount * 100) / 100;
                 console.log();
@@ -25,7 +26,11 @@
                 console.log(`ASYNC:   avg: ${avg}ms`);
                 console.log(`         sum: ${sum}ms`);
                 console.log("===========================");
-                supervisor.stats();
+                let stats = supervisor.stats();
+                supervisor.log.info(`Supervisor :: threads (${stats.workers.length})`);
+                stats.workers.forEach((child) => {
+                    supervisor.log.info(`Supervisor :: ${child.id} - threads active: ${child.threads} done: ${child.done}`);
+                });
             })
             .then(perfSyn);
     }
@@ -38,7 +43,7 @@
             consumeSync();
         }
 
-        promiseSync
+        return promiseSync
             .then(() => {
                 let avg = Math.round(sum / amount * 100) / 100;
                 console.log();
@@ -46,7 +51,11 @@
                 console.log(`SYNC:    avg: ${avg}ms`);
                 console.log(`         sum: ${sum}ms`);
                 console.log("===========================");
-                supervisor.stats();
+                let stats = supervisor.stats();
+                supervisor.log.info(`Supervisor :: threads (${stats.workers.length})`);
+                stats.workers.forEach((child) => {
+                    supervisor.log.info(`Supervisor :: ${child.id} - threads active: ${child.threads} done: ${child.done}`);
+                });
                 process.exit(0);
             });
 
