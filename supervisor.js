@@ -61,6 +61,7 @@
             process.send({
               result: res,
               success: true,
+              reply: true,
               id: m.id
             });
           })
@@ -69,6 +70,7 @@
             process.send({
               result: err,
               success: false,
+              reply: true,
               id: m.id
             });
           });
@@ -222,7 +224,7 @@
         });
       }
 
-      if (typeof msg.result !== "undefined") {
+      if (msg.reply) {
         child.threads--;
         child.threadsdone++;
 
